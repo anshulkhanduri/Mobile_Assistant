@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Knowledge Assistant – AI chatbot for mobile apps and smartphone usage guidance." />
+    <title>Knowledge Assistant | Mobile Apps Help</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+</head>
+<body>
+<div class="page-wrapper">
+    <div class="chat-container" role="main">
+
+        <!-- ── Header ──────────────────────────────── -->
+        <header class="chat-header" aria-label="Chatbot header">
+            <div class="header-avatar" aria-hidden="true">📱</div>
+            <div class="header-info">
+                <h1>Knowledge Assistant</h1>
+                <p>Mobile Apps &amp; Smartphone Guide</p>
+            </div>
+            <div class="header-status" aria-label="Bot status">
+                <span class="status-dot"></span>
+                Online
+            </div>
+        </header>
+
+        <!-- ── Topics Bar ──────────────────────────── -->
+        <nav class="topics-bar" aria-label="Quick topic navigation">
+            <button class="topic-chip" onclick="quickAsk('How to install an app')">📲 Install App</button>
+            <button class="topic-chip" onclick="quickAsk('How to take screenshot')">📸 Screenshot</button>
+            <button class="topic-chip" onclick="quickAsk('How to connect WiFi')">📶 WiFi</button>
+            <button class="topic-chip" onclick="quickAsk('Battery draining fast')">🔋 Battery</button>
+            <button class="topic-chip" onclick="quickAsk('Phone is slow')">🐌 Slow Phone</button>
+            <button class="topic-chip" onclick="quickAsk('How to lock phone')">🔒 Security</button>
+            <button class="topic-chip" onclick="quickAsk('Phone overheating')">🌡️ Overheating</button>
+            <button class="topic-chip" onclick="quickAsk('Storage full')">💾 Storage</button>
+        </nav>
+
+        <!-- ── Messages ────────────────────────────── -->
+        <section id="chat-messages" class="chat-messages" aria-live="polite" aria-label="Chat messages">
+            <!-- Welcome card -->
+            <div class="welcome-card">
+                <span class="emoji">🤖</span>
+                <h2>Welcome to the Knowledge Assistant!</h2>
+                <p>I'm here to help you with mobile apps, phone features, troubleshooting, and more.<br/>
+                   Type a question below or tap a topic above to get started.</p>
+            </div>
+
+            <!-- Initial bot greeting -->
+            <div class="message bot" id="first-bot-msg">
+                <div class="bubble-avatar" aria-hidden="true">🤖</div>
+                <div>
+                    <div class="bubble" id="greeting-bubble">Hello! 👋 I'm your Knowledge Assistant. Ask me anything about mobile apps, smartphone settings, troubleshooting, or security. How can I help you today?</div>
+                    <div class="bubble-time" id="greeting-time"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ── Input Area ───────────────────────────── -->
+        <footer class="chat-input-area">
+            <!-- Quick suggestions -->
+            <div class="suggestions" aria-label="Quick suggestions">
+                <button class="suggestion-btn" onclick="quickAsk('What can you do')">What can you do?</button>
+                <button class="suggestion-btn" onclick="quickAsk('How to update app')">Update apps</button>
+                <button class="suggestion-btn" onclick="quickAsk('How to connect Bluetooth')">Bluetooth help</button>
+                <button class="suggestion-btn" onclick="quickAsk('App keeps crashing')">App crashing</button>
+            </div>
+
+            <div class="input-row">
+                <textarea
+                    id="user-input"
+                    rows="1"
+                    placeholder="Ask me anything about mobile apps or your phone…"
+                    aria-label="Type your message"
+                    maxlength="500"
+                ></textarea>
+                <button id="send-btn" aria-label="Send message" title="Send">
+                    ➤
+                </button>
+            </div>
+            <p class="input-hint">Press <kbd>Enter</kbd> to send &nbsp;|&nbsp; <kbd>Shift+Enter</kbd> for new line</p>
+        </footer>
+
+    </div><!-- /.chat-container -->
+</div><!-- /.page-wrapper -->
+
+<script>
+/* ================================================================
+   Knowledge Assistant — Chat UI script
+   ================================================================ */
+
+const messagesEl = document.getElementById('chat-messages');
+const inputEl    = document.getElementById('user-input');
+const sendBtn    = document.getElementById('send-btn');
+
+/* ── Utility: current time string ─ */
+function timeNow() {
+    return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+/* ── Set greeting timestamp ─ */
+document.getElementById('greeting-time').textContent = timeNow();
+
+/* ── Auto-grow textarea ─ */
+inputEl.addEventListener('input', () => {
+    inputEl.style.height = 'auto';
+    inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + 'px';
+});
+
+/* ── Enter to send ─ */
+inputEl.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+    }
+});
+
+sendBtn.addEventListener('click', sendMessage);
+
+/* ── Quick-ask from chips / suggestions ─ */
+function quickAsk(text) {
+    inputEl.value = text;
+    inputEl.style.height = 'auto';
+    sendMessage();
+}
+
+/* ── Append a message bubble ─ */
+function appendMessage(role, text) {
+    const wrapper = document.createElement('div');
+    wrapper.className = `message ${role}`;
+
+    const avatarIcon = role === 'user' ? '🧑' : '🤖';
+    const timeStr = timeNow();
+
+    wrapper.innerHTML = `
+        <div class="bubble-avatar" aria-hidden="true">${avatarIcon}</div>
+        <div>
+            <div class="bubble">${formatText(text)}</div>
+            <div class="bubble-time">${timeStr}</div>
+        </div>`;
+
+    messagesEl.appendChild(wrapper);
+    scrollBottom();
+    return wrapper;
+}
+
+/* ── Format plain text → basic HTML ─ */
+function formatText(text) {
+    // Escape HTML entities first
+    let safe = text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+
+    // Convert **bold**
+    safe = safe.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+
+    // Convert newlines to <br>
+    safe = safe.replace(/\n/g, '<br/>');
+
+    return safe;
+}
+
+/* ── Show typing indicator ─ */
+function showTyping() {
+    const el = document.createElement('div');
+    el.className = 'typing-indicator';
+    el.id = 'typing';
+    el.innerHTML = `
+        <div class="bubble-avatar" aria-hidden="true">🤖</div>
+        <div class="typing-dots">
+            <span></span><span></span><span></span>
+        </div>`;
+    messagesEl.appendChild(el);
+    scrollBottom();
+}
+
+function hideTyping() {
+    const el = document.getElementById('typing');
+    if (el) el.remove();
+}
+
+/* ── Scroll to bottom ─ */
+function scrollBottom() {
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+/* ── Main send function ─ */
+async function sendMessage() {
+    const text = inputEl.value.trim();
+    if (!text) return;
+
+    // Append user message
+    appendMessage('user', text);
+    inputEl.value = '';
+    inputEl.style.height = 'auto';
+    sendBtn.disabled = true;
+
+    // Simulate typing delay
+    showTyping();
+
+    try {
+        const res = await fetch('/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: text })
+        });
+        const data = await res.json();
+
+        // Slight delay for realism
+        await new Promise(r => setTimeout(r, 600));
+        hideTyping();
+        appendMessage('bot', data.response);
+    } catch (err) {
+        hideTyping();
+        appendMessage('bot', '⚠️ Sorry, I encountered an error. Please try again.');
+        console.error('Chat error:', err);
+    } finally {
+        sendBtn.disabled = false;
+        inputEl.focus();
+    }
+}
+</script>
+</body>
+</html>
